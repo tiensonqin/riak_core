@@ -877,7 +877,7 @@ exchange_final(_Level, Segments, Local, Remote, AccFun, Acc0, _Opts) ->
                                     {Type, Key}
                                 end || {KBin, Diff} <- Delta],
                         Keys,
-                        AccFun(Keys, Acc)
+                        AccFun(Keys, Acc, {Segment, ?NUM_SEGMENTS})
                 end, Acc0, Segments).
     %% Keys = compare_segments(Bucket, Tree, Remote),
     %% AccFun(Keys, KeyAcc);
@@ -1327,7 +1327,8 @@ prop_correct() ->
                     end)).
 
 est_prop() ->
-    ?FORALL(N, choose(1, 100000),
+    %% It's hard to estimate under 10000 keys
+    ?FORALL(N, choose(10000, 100000),
             begin
                 {ok, EstKeys} = estimate_keys(update_tree(insert_many(N, new()))),
                 Diff = abs(N - EstKeys),
