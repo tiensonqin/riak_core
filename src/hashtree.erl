@@ -1166,7 +1166,7 @@ local_compare(T1, T2) ->
                      KeyHashes2
              end,
     %% compare(T1, Remote).
-    AccFun = fun(Keys, KeyAcc) ->
+    AccFun = fun(Keys, KeyAcc, _Segment) ->
                      Keys ++ KeyAcc
              end,
     compare2(T1, Remote, AccFun, []).
@@ -1328,11 +1328,11 @@ prop_correct() ->
 
 est_prop() ->
     %% It's hard to estimate under 10000 keys
-    ?FORALL(N, choose(10000, 100000),
+    ?FORALL(N, choose(10000, 500000),
             begin
                 {ok, EstKeys} = estimate_keys(update_tree(insert_many(N, new()))),
                 Diff = abs(N - EstKeys),
-                MaxDiff = N div 10,
+                MaxDiff = N div 5,
                 ?debugVal(Diff), ?debugVal(EstKeys),?debugVal(MaxDiff),
                 ?assertEqual(true, MaxDiff > Diff),
                 true
