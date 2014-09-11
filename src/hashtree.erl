@@ -434,7 +434,7 @@ read_meta(Key, State) when is_binary(Key) ->
 
 -spec estimate_keys(hashtree()) -> {ok, integer()}.
 estimate_keys(State) ->
-    estimate_keys(snapshot(State), 0, 0, ?NUM_KEYS_REQUIRED).
+    estimate_keys(State, 0, 0, ?NUM_KEYS_REQUIRED).
 
 estimate_keys(_State, ?MAX_NUM_SEGMENTS, Keys, _MaxKeys) ->
     {ok, Keys*(?NUM_SEGMENTS div ?MAX_NUM_SEGMENTS)};
