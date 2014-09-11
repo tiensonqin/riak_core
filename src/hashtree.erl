@@ -434,13 +434,13 @@ read_meta(Key, State) when is_binary(Key) ->
 
 -spec estimate_keys(hashtree()) -> {ok, integer()}.
 estimate_keys(State) ->
-    estimate_keys(State, 0, 0, ?NUM_KEYS_REQUIRED).
+    estimate_keys(update_tree(State), 0, 0, ?NUM_KEYS_REQUIRED).
 
 estimate_keys(_State, ?MAX_NUM_SEGMENTS, Keys, _MaxKeys) ->
     {ok, Keys*(?NUM_SEGMENTS div ?MAX_NUM_SEGMENTS)};
 
 estimate_keys(_State, CurrentSegment, Keys, MaxKeys) when Keys >= MaxKeys ->
-    {ok, (Keys * ?NUM_SEGMENTS) div CurrentSegment};
+    {ok, (Keys * ?NUM_SEGMENTS) div (CurrentSegment + 1)};
 
 estimate_keys(State, CurrentSegment, Keys, MaxKeys) ->
     [{_, KeyHashes2}] = key_hashes(State, CurrentSegment),
