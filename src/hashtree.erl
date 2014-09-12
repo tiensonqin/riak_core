@@ -166,7 +166,7 @@
 
 -type keydiff() :: {missing | remote_missing | different, binary()}.
 
--type remote_fun() :: fun((get_bucket | key_hashes | init | final,
+-type remote_fun() :: fun((get_bucket | key_hashes | start_exchange_level | start_exchange_segments | init | final,
                            {integer(), integer()} | integer() | term()) -> any()).
 
 -type acc_fun(Acc) :: fun(([keydiff()], Acc) -> Acc).
@@ -876,7 +876,6 @@ exchange_final(_Level, Segments, Local, Remote, AccFun, Acc0, _Opts) ->
                                     Type = key_diff_type(Diff),
                                     {Type, Key}
                                 end || {KBin, Diff} <- Delta],
-                        Keys,
                         AccFun(Keys, Acc, {Segment, ?NUM_SEGMENTS})
                 end, Acc0, Segments).
     %% Keys = compare_segments(Bucket, Tree, Remote),
