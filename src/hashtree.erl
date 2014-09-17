@@ -876,7 +876,7 @@ exchange_final(_Level, Segments, Local, Remote, AccFun, Acc0, _Opts) ->
                                     Type = key_diff_type(Diff),
                                     {Type, Key}
                                 end || {KBin, Diff} <- Delta],
-                        AccFun(Keys, Acc, {Segment, ?NUM_SEGMENTS})
+                        AccFun(Keys, Acc)
                 end, Acc0, Segments).
     %% Keys = compare_segments(Bucket, Tree, Remote),
     %% AccFun(Keys, KeyAcc);
