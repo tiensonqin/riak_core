@@ -34,6 +34,7 @@
          chash_key/1, chash_key/2,
          chash_std_keyfun/1,
          chash_bucketonly_keyfun/1,
+         chash_index_keyfun/1,
          mkclientid/1,
          start_app_deps/1,
          build_tree/3,
@@ -179,16 +180,16 @@ integer_to_list(I0, Base, R0) ->
     D = I0 rem Base,
     I1 = I0 div Base,
     R1 = if D >= 36 ->
-		 [D-36+$a|R0];
-	    D >= 10 ->
-		 [D-10+$A|R0];
-	    true ->
-		 [D+$0|R0]
-	 end,
+                 [D-36+$a|R0];
+            D >= 10 ->
+                 [D-10+$A|R0];
+            true ->
+                 [D+$0|R0]
+         end,
     if I1 =:= 0 ->
-	    R1;
+            R1;
        true ->
-	    integer_to_list(I1, Base, R1)
+            integer_to_list(I1, Base, R1)
     end.
 
 -ifndef(old_hash).
@@ -224,7 +225,7 @@ unique_id_62() ->
 reload_all(Module) ->
     {ok, Ring} = riak_core_ring_manager:get_my_ring(),
     [{safe_rpc(Node, code, purge, [Module]),
-     safe_rpc(Node, code, load_file, [Module])} ||
+      safe_rpc(Node, code, load_file, [Module])} ||
         Node <- riak_core_ring:all_members(Ring)].
 
 %% @spec mkclientid(RemoteNode :: term()) -> ClientID :: list()
@@ -255,6 +256,10 @@ chash_std_keyfun({Bucket, Key}) -> chash:key_of({Bucket, Key}).
 %% @spec chash_bucketonly_keyfun(BKey :: riak_object:bkey()) -> chash:index()
 %% @doc Object/ring hashing fun that ignores Key, only uses Bucket.
 chash_bucketonly_keyfun({Bucket, _Key}) -> chash:key_of(Bucket).
+
+chash_index_keyfun({Bucket, Key}) ->
+    [IndexPartOfKey, _Id] = string:tokens(binary_to_list(Key), "$$"),
+    chash:key_of({Bucket, list_to_binary(IndexPartOfKey)}).
 
 str_to_node(Node) when is_atom(Node) ->
     str_to_node(atom_to_list(Node));
@@ -294,10 +299,10 @@ start_app_deps(App) ->
 %% @doc Start the named application if not already started.
 ensure_started(App) ->
     case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
+        ok ->
+            ok;
+        {error, {already_started, App}} ->
+            ok
     end.
 
 %% @doc Invoke function `F' over each element of list `L' in parallel,
@@ -320,14 +325,14 @@ pmap(F, L) ->
     [R || {_,R} <- L3].
 
 -record(pmap_acc,{
-                  mapper,
-                  fn,
-                  n_pending=0,
-                  pending=sets:new(),
-                  n_done=0,
-                  done=[],
-                  max_concurrent=1
-                  }).
+          mapper,
+          fn,
+          n_pending=0,
+          pending=sets:new(),
+          n_done=0,
+          done=[],
+          max_concurrent=1
+         }).
 
 %% @doc Parallel map with a cap on the number of concurrent worker processes.
 %% Note: Worker processes are linked to the parent, so a crash propagates.
@@ -337,13 +342,13 @@ pmap(Fun, List, MaxP) when MaxP < 1 ->
 pmap(Fun, List, MaxP) when is_function(Fun), is_list(List), is_integer(MaxP) ->
     Mapper = self(),
     #pmap_acc{pending=Pending, done=Done} =
-                 lists:foldl(fun pmap_worker/2,
-                             #pmap_acc{mapper=Mapper,
-                                       fn=Fun,
-                                       max_concurrent=MaxP},
-                             List),
+        lists:foldl(fun pmap_worker/2,
+                    #pmap_acc{mapper=Mapper,
+                              fn=Fun,
+                              max_concurrent=MaxP},
+                    List),
     All = pmap_collect_rest(Pending, Done),
-    % Restore input order
+                                                % Restore input order
     Sorted = lists:keysort(1, All),
     [ R || {_, R} <- Sorted ].
 
@@ -595,7 +600,7 @@ sockname(Socket, Transport) ->
 make_fold_req(#riak_core_fold_req_v1{foldfun=FoldFun, acc0=Acc0}) ->
     make_fold_req(FoldFun, Acc0, false, []);
 make_fold_req(?FOLD_REQ{foldfun=FoldFun, acc0=Acc0,
-                       forwardable=Forwardable, opts=Opts}) ->
+                        forwardable=Forwardable, opts=Opts}) ->
     make_fold_req(FoldFun, Acc0, Forwardable, Opts).
 
 make_fold_req(FoldFun, Acc0) ->
@@ -746,14 +751,14 @@ pmap_test_() ->
      fun() -> error_logger:tty(false) end,
      fun(_) -> error_logger:tty(true) end,
      [fun() ->
-              % Test simple map case
+                                                % Test simple map case
               ?assertEqual(Lout, pmap(Fgood, Lin)),
-              % Verify a crashing process will not stall pmap
+                                                % Verify a crashing process will not stall pmap
               Parent = self(),
               Pid = spawn(fun() ->
-                                  % Caller trapping exits causes stall!!
-                                  % TODO: Consider pmapping in a spawned proc
-                                  % process_flag(trap_exit, true),
+                                                % Caller trapping exits causes stall!!
+                                                % TODO: Consider pmapping in a spawned proc
+                                                % process_flag(trap_exit, true),
                                   pmap(Fbad, Lin),
                                   ?debugMsg("pmap finished just fine"),
                                   Parent ! no_crash_yo
@@ -771,44 +776,44 @@ pmap_test_() ->
 bounded_pmap_test_() ->
     Fun1 = fun(X) -> X+2 end,
     Tests =
-    fun(CountPid) ->
-        GFun = fun(Max) ->
-                    fun(X) ->
-                            ?assert(incr_counter(CountPid) =< Max),
-                            timer:sleep(1),
-                            decr_counter(CountPid),
-                            Fun1(X)
-                    end
-               end,
-        [
-         fun() ->
-             ?assertEqual(lists:seq(Fun1(1), Fun1(N)),
-                          pmap(GFun(MaxP),
-                               lists:seq(1, N), MaxP))
-         end ||
-         MaxP <- lists:seq(1,20),
-         N <- lists:seq(0,10)
-        ]
-    end,
+        fun(CountPid) ->
+                GFun = fun(Max) ->
+                               fun(X) ->
+                                       ?assert(incr_counter(CountPid) =< Max),
+                                       timer:sleep(1),
+                                       decr_counter(CountPid),
+                                       Fun1(X)
+                               end
+                       end,
+                [
+                 fun() ->
+                         ?assertEqual(lists:seq(Fun1(1), Fun1(N)),
+                                      pmap(GFun(MaxP),
+                                           lists:seq(1, N), MaxP))
+                 end ||
+                    MaxP <- lists:seq(1,20),
+                    N <- lists:seq(0,10)
+                ]
+        end,
     {setup,
-      fun() ->
-          Pid = spawn_link(?MODULE, counter_loop, [0]),
-          monitor(process, Pid),
-          Pid
-      end,
-      fun(Pid) ->
-          Pid ! exit,
-          receive
-              {'DOWN', _Ref, process, Pid, _Info} -> ok
-          after
-                  3000 ->
-                  ?debugMsg("pmap counter process did not go down in time"),
-                  ?assert(false)
-          end,
-          ok
-      end,
-      Tests
-     }.
+     fun() ->
+             Pid = spawn_link(?MODULE, counter_loop, [0]),
+             monitor(process, Pid),
+             Pid
+     end,
+     fun(Pid) ->
+             Pid ! exit,
+             receive
+                 {'DOWN', _Ref, process, Pid, _Info} -> ok
+             after
+                 3000 ->
+                     ?debugMsg("pmap counter process did not go down in time"),
+                     ?assert(false)
+             end,
+             ok
+     end,
+     Tests
+    }.
 
 make_fold_req_test_() ->
     {setup,
@@ -866,8 +871,7 @@ proxy_spawn_test() ->
         _ ->
             ok
     after 1000 ->
-        ok
+            ok
     end.
 
 -endif.
-
